@@ -32,7 +32,9 @@ module Fetch
     def ensure_instution
       return if @config.has?(:institution_id)
 
-      institutions = client.institution.get_institutions('DK')
+      print 'Enter country code (ISO 3166) or press return for all: '
+      country = gets.chomp
+      institutions = client.institution.get_institutions(country)
       institution_ids = []
       institutions.each do |inst|
         institution_ids << inst.id
