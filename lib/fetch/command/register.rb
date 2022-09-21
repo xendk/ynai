@@ -34,8 +34,8 @@ module Fetch
 
       institutions = client.institution.get_institutions('DK')
       institution_ids = []
-      institutions.each do inst|
-                           institution_ids << inst.id
+      institutions.each do |inst|
+        institution_ids << inst.id
         puts "#{inst.id}: #{inst.name}"
       end
 
