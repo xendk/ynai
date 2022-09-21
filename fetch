@@ -1,0 +1,69 @@
+#!/usr/bin/env ruby
+
+# frozen_string_literal: true
+
+require 'bundler/setup'
+
+# Kill some warnings caused by nordigen requiring an old-ish faraday
+require 'warning'
+Warning.ignore(/Top level ::(CompositeIO|Parts) is deprecated/)
+
+require 'nordigen-ruby'
+require 'optparse'
+require 'securerandom'
+
+require_relative 'lib/config'
+require_relative 'lib/fetch/command'
+
+commands = {
+  'init' => 'Create database',
+  'register' => 'Register a bank connection',
+  'run' => 'Fetch transactions'
+}
+
+optparser = OptionParser.new do |opts|
+  opts.banner = 'Usage: fetch [options] <command>'
+
+  opts.separator ''
+  opts.separator 'Commands:'
+  commands.each_pair do |command, description|
+    opts.separator "  #{command}: #{description}"
+  end
+
+  opts.separator ''
+  opts.separator 'Common options:'
+
+  opts.on_tail('-h', '--help', 'Show this message') do
+    puts opts
+    exit
+  end
+end
+
+optparser.parse!
+
+abort optparser.help unless ARGV.length.positive?
+
+command = ARGV.shift
+
+abort 'Unknown command' unless commands.key? command
+
+def register_command()
+
+  req.accounts.each do |id|
+    p client.account(id).get_details
+    # puts client.account(id).get_transactions.to_yaml
+  end
+
+  # p config
+end
+
+config = Config.new(__dir__, '.fetch.yml')
+
+case command
+when 'register'
+  Fetch::Command::Register.new(config).run
+when 'init'
+  Fetch::Command::Init.new(config).run
+when 'run'
+  Fetch::Command::Run.new(config).run
+end

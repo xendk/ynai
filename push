@@ -1,0 +1,172 @@
+#!/usr/bin/env ruby
+
+# frozen_string_literal: true
+
+require 'bundler/setup'
+
+require 'digest'
+require 'optparse'
+require 'sqlite3'
+require 'ynab'
+
+require_relative 'lib/config'
+
+refresh_accounts = false
+update_mapping = false
+
+OptionParser.new do |opts|
+  opts.banner = 'Usage: push [options]'
+
+  opts.separator ''
+  opts.separator 'Common options:'
+
+  opts.on('-r', '--refresh-accounts', 'Refresh YNAB accounts') do
+    refresh_accounts = true
+  end
+
+  opts.on('-m', '--update-mapping', 'Update account mapping') do
+    update_mapping = true
+  end
+
+  opts.on_tail('-h', '--help', 'Show this message') do
+    puts opts
+    exit
+  end
+end.parse!
+
+config = Config.new(__dir__, '.push.yml')
+
+unless config.has?(:token)
+  print 'Enter personal access token: '
+  config[:token] = gets.chomp
+  config.save!
+end
+
+ynab_api = YNAB::API.new(config[:token])
+
+budgets = {}
+budget_accounts = nil
+
+unless config.has?(:budget_id)
+  budget_response = ynab_api.budgets.get_budgets include_accounts: true
+  budget_data = budget_response.data.budgets
+
+  budget_data.each do |budget|
+    puts budget.name
+    budgets[budget.name] = budget
+  end
+
+  print 'Select budget: '
+  budget_name = gets.chomp
+
+  raise 'Invalid budget' unless budgets.include? budget_name
+
+  config[:budget_id] = budgets[budget_name].id
+  config.save!
+
+  budget_accounts = budgets[budget_name].accounts
+end
+
+if refresh_accounts || !config.has?(:accounts)
+  unless budget_accounts
+    accounts_response = ynab_api.accounts.get_accounts(config[:budget_id])
+    budget_accounts = accounts_response.data.accounts
+  end
+
+  accounts = {}
+  budget_accounts.each do |account|
+    accounts[account.id] = account.name
+  end
+
+  config[:accounts] = accounts
+  config.save!
+end
+
+number = 1
+accounts = {}
+prompt = ''
+config[:accounts].each do |id, name|
+  accounts[number] = [id, name]
+  prompt += "#{number}: #{name}\n"
+  number += 1
+end
+
+prompt += "(Return to not import this account)\n"
+
+if update_mapping || !config.has?(:mapping)
+  mapping = {}
+  SQLite3::Database.open File.join(config.path, 'ynai.db') do |db|
+    res = db.execute('SELECT id, name FROM accounts')
+    res.each do |id, name|
+      puts prompt
+      puts "Import \"#{name}\" into: "
+
+      choice = gets.chomp
+      next if choice == ''
+
+      choice = choice.to_i
+      raise 'Invalid selection' unless accounts.include? choice
+
+      mapping[id] = accounts[choice][0]
+    end
+  end
+
+  config[:mapping] = mapping
+  config.save!
+end
+
+processed_ids = []
+transactions = []
+db = SQLite3::Database.open File.join(config.path, 'ynai.db')
+query = db.prepare <<~SQL
+  SELECT id, booking_date, amount, description
+  FROM transactions
+  WHERE state = "pending" AND value_date IS NOT NULL AND account_id = ?
+SQL
+
+config[:mapping].each_key do |account|
+  res = query.execute account
+
+  res.each_hash do |row|
+    # The transaction IDs are too big for import_id, so we hash it and
+    # cut it down to size. We prefix by the date, which increases the
+    # chance of hash collisions, but means we can never collide with a
+    # past transaction. The risk of collision would probably be lower
+    # just using as much hash as possible, but this feels better.
+    import_id = (row['booking_date'] + Digest::SHA1.hexdigest(row['id']))[0..35]
+
+    transactions << {
+      'account_id' => config[:mapping][account],
+      'date' => row['booking_date'],
+      'amount' => (row['amount'] * 1000).to_i,
+      'payee_name' => row['description'],
+      'cleared' => 'cleared',
+      'import_id' => import_id
+    }
+
+    processed_ids << row['id']
+  end
+end
+
+if transactions.empty?
+  puts 'No new transactions'
+  exit
+end
+
+data = { 'transactions' => transactions }
+begin
+  res = ynab_api.transactions.create_transactions(config[:budget_id], data)
+rescue YNAB::ApiError => e
+  puts e.name
+  puts e.detail
+  exit!
+end
+
+query = db.prepare 'UPDATE transactions SET state = "processed" WHERE id = ?'
+processed_ids.each do |id|
+  query.execute id
+end
+
+if res.data.duplicate_import_ids && !res.data.duplicate_import_ids.empty?
+  puts "Duplicated IDs: #{res.data.duplicate_import_ids.join(', ')}"
+end
