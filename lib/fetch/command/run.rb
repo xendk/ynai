@@ -8,6 +8,8 @@ module Fetch
     def run
       ensure_connection
 
+      latest = db.get_first_value('SELECT MAX(booking_date) FROM transactions')
+
       insert = db.prepare <<~SQL
         INSERT OR IGNORE INTO transactions (
           id,
@@ -30,11 +32,16 @@ module Fetch
 
         transactions = client.account(account_id).get_transactions
         transactions.transactions.booked.each do |transaction|
-          # The transaction IDs are too big for import_id, so we hash it and
-          # cut it down to size. We prefix by the date, which increases the
-          # chance of hash collisions, but means we can never collide with a
-          # past transaction. The risk of collision would probably be lower
-          # just using as much hash as possible, but this feels better.
+          # Skip existing transactions, but process the last day in
+          # case more cropped up.
+          next if transaction.bookingDate < latest
+
+          # The transaction IDs are too big for import_id, so we hash
+          # it and cut it down to size. We prefix by the date, which
+          # increases the chance of hash collisions, but means we can
+          # never collide with a past transaction. The risk of
+          # collision would probably be lower just using as much hash
+          # as possible, but this feels better.
           import_id = (transaction.bookingDate + Digest::SHA1.hexdigest(transaction.transactionId))[0..35]
 
           insert.execute(
