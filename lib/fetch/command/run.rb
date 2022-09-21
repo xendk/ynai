@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'digest'
+
 module Fetch
   # Run command.
   class Command::Run < Command
@@ -17,9 +19,10 @@ module Fetch
           description,
           value_date,
           balance,
-          balance_currency
+          balance_currency,
+          import_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       SQL
       res = db.execute('SELECT id FROM accounts')
       res.each do |row|
@@ -27,6 +30,13 @@ module Fetch
 
         transactions = client.account(account_id).get_transactions
         transactions.transactions.booked.each do |transaction|
+          # The transaction IDs are too big for import_id, so we hash it and
+          # cut it down to size. We prefix by the date, which increases the
+          # chance of hash collisions, but means we can never collide with a
+          # past transaction. The risk of collision would probably be lower
+          # just using as much hash as possible, but this feels better.
+          import_id = (transaction.bookingDate + Digest::SHA1.hexdigest(transaction.transactionId))[0..35]
+
           insert.execute(
             transaction.transactionId,
             account_id,
@@ -40,7 +50,8 @@ module Fetch
             # accounts (and perhaps only new ones).
             transaction.valueDate || transaction.bookingDate,
             transaction.balanceAfterTransaction.balanceAmount.amount,
-            transaction.balanceAfterTransaction.balanceAmount.currency
+            transaction.balanceAfterTransaction.balanceAmount.currency,
+            import_id
           )
         end
       end

@@ -4,7 +4,6 @@
 
 require 'bundler/setup'
 
-require 'digest'
 require 'optparse'
 require 'sqlite3'
 require 'ynab'
@@ -119,7 +118,7 @@ processed_ids = []
 transactions = []
 db = SQLite3::Database.open File.join(config.path, 'ynai.db')
 query = db.prepare <<~SQL
-  SELECT id, booking_date, amount, description
+  SELECT id, booking_date, amount, description, import_id
   FROM transactions
   WHERE state = "pending" AND value_date IS NOT NULL AND account_id = ?
 SQL
@@ -128,20 +127,13 @@ config[:mapping].each_key do |account|
   res = query.execute account
 
   res.each_hash do |row|
-    # The transaction IDs are too big for import_id, so we hash it and
-    # cut it down to size. We prefix by the date, which increases the
-    # chance of hash collisions, but means we can never collide with a
-    # past transaction. The risk of collision would probably be lower
-    # just using as much hash as possible, but this feels better.
-    import_id = (row['booking_date'] + Digest::SHA1.hexdigest(row['id']))[0..35]
-
     transactions << {
       'account_id' => config[:mapping][account],
       'date' => row['booking_date'],
       'amount' => (row['amount'] * 1000).to_i,
       'payee_name' => row['description'],
       'cleared' => 'cleared',
-      'import_id' => import_id
+      'import_id' => row['import_id']
     }
 
     processed_ids << row['id']

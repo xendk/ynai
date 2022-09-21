@@ -26,7 +26,8 @@ module Fetch
             description TEXT NOT NULL,
             value_date TEXT,
             balance REAL,
-            balance_currency TEXT
+            balance_currency TEXT,
+            import_id TEXT
           );
         SQL
 
