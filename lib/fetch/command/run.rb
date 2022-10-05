@@ -34,7 +34,7 @@ module Fetch
         transactions.transactions.booked.each do |transaction|
           # Skip existing transactions, but process the last day in
           # case more cropped up.
-          next if transaction.bookingDate < latest
+          next if latest && transaction.bookingDate < latest
 
           # The transaction IDs are too big for import_id, so we hash
           # it and cut it down to size. We prefix by the date, which
