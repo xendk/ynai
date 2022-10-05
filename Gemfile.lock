@@ -82,6 +82,8 @@ GEM
       thor (~> 1.0)
       tilt (~> 2.0)
       yard (~> 0.9, >= 0.9.24)
+    sqlite3 (1.5.2)
+      mini_portile2 (~> 2.8.0)
     thor (1.2.1)
     tilt (2.0.11)
     typhoeus (1.4.0)
@@ -101,6 +103,7 @@ PLATFORMS
 DEPENDENCIES
   nordigen-ruby
   solargraph
+  sqlite3
   warning
   ynab
 
