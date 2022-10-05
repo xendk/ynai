@@ -21,7 +21,8 @@ module Fetch
         details = client.account(id).get_details
         db do |db|
           sql = 'INSERT OR REPLACE INTO accounts (id, name, product) VALUES (?, ?, ?)'
-          db.execute(sql, [id, details.account.name, details.account.product])
+          # Some banks doesn't give a product.
+          db.execute(sql, [id, details.account.name, details.account.product || ''])
         end
       end
 
