@@ -44,6 +44,14 @@ module Fetch
           # as possible, but this feels better.
           import_id = (transaction.bookingDate + Digest::SHA1.hexdigest(transaction.transactionId))[0..35]
 
+          # Not all banks supply these.
+          balance_amount = transaction.balanceAfterTransaction&.balanceAmount&.amount || 0
+          balance_currency = transaction.balanceAfterTransaction&.balanceAmount&.currency || ''
+
+          # Differences in "description" between banks.
+          description = transaction.remittanceInformationUnstructured&.split(/\n/)&.first ||
+                        transaction.additionalInformation
+
           insert.execute(
             transaction.transactionId,
             account_id,
@@ -51,13 +59,13 @@ module Fetch
             transaction.bookingDate,
             transaction.transactionAmount.amount,
             transaction.transactionAmount.currency,
-            transaction.additionalInformation,
+            description,
             # Apparently some cleared transactions doesn't have a
             # value date. Seems to occur on transactions between
             # accounts (and perhaps only new ones).
             transaction.valueDate || transaction.bookingDate,
-            transaction.balanceAfterTransaction.balanceAmount.amount,
-            transaction.balanceAfterTransaction.balanceAmount.currency,
+            balance_amount,
+            balance_currency,
             import_id
           )
         end
