@@ -20,9 +20,7 @@ class Config
 
       # Make sub-hashes be string indexed.
       @config.transform_values! do |val|
-        if val.is_a? Hash
-          val.transform_keys! { |key| key.to_s}
-        end
+        val.transform_keys!(&:to_s) if val.is_a? Hash
         val
       end
     rescue StandardError => e
