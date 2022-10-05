@@ -7,6 +7,7 @@ require 'bundler/setup'
 # Kill some warnings caused by nordigen requiring an old-ish faraday
 require 'warning'
 Warning.ignore(/Top level ::(CompositeIO|Parts) is deprecated/)
+Warning.ignore(/constant ::UploadIO is deprecated/)
 
 require 'nordigen-ruby'
 require 'optparse'
