@@ -94,6 +94,7 @@ prompt += "(Return to not import this account)\n"
 
 if update_mapping || !config.has?(:mapping)
   mapping = {}
+  summary = []
   SQLite3::Database.open File.join(config.path, 'ynai.db') do |db|
     res = db.execute('SELECT id, name FROM accounts')
     res.each do |id, name|
@@ -101,14 +102,25 @@ if update_mapping || !config.has?(:mapping)
       puts "Import \"#{name}\" into: "
 
       choice = gets.chomp
-      next if choice == ''
+      if choice == ''
+        summary << "#{name} => <not imported>"
+        next
+      end
 
       choice = choice.to_i
       raise 'Invalid selection' unless accounts.include? choice
 
       mapping[id] = accounts[choice][0]
+      summary << "#{name} => #{accounts[choice][1]}"
     end
   end
+
+  puts 'Mapping bank account => YNAB account:'
+  summary.each do |line|
+    puts line
+  end
+  print 'Is this OK? (y/n) '
+  raise 'Canceled' unless gets.chomp =~ /y/
 
   config[:mapping] = mapping
   config.save!
