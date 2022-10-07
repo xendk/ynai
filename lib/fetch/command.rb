@@ -67,7 +67,7 @@ module Fetch
         # Check that we have a valid token. We need to create our own
         # request so we can get the HTTP status code.
         res = client.request.get('agreements/enduser/', { limit: 1, offset: 0 })
-        raise "No access: #{res.body.summary}" if res.status == 401
+        raise "No access: #{res.body['summary']}" if res.status == 401
       rescue RuntimeError
         attempt += 1
         if attempt == 2

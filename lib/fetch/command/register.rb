@@ -14,19 +14,19 @@ module Fetch
 
       req = client.requisition.get_requisition_by_id @config[:requsition_id]
 
-      raise 'Error fetching requisition' unless req.id
+      raise 'Error fetching requisition' unless req['id']
 
       puts 'Fetching accounts'
-      req.accounts.each do |id|
+      req['accounts']&.each do |id|
         details = client.account(id).get_details
         db do |db|
           sql = 'INSERT OR REPLACE INTO accounts (id, name, product) VALUES (?, ?, ?)'
           # Some banks doesn't give a product.
-          db.execute(sql, [id, details.account.name, details.account.product || ''])
+          db.execute(sql, [id, details.dig('account', 'name'), details.dig('account', 'product') || ''])
         end
       end
 
-      puts "#{req.accounts.size} accounts set up."
+      puts "#{req['accounts'].size} accounts set up."
       puts 'All set up. Now run `fetch run`.'
     end
 
@@ -38,8 +38,8 @@ module Fetch
       institutions = client.institution.get_institutions(country)
       institution_ids = []
       institutions.each do |inst|
-        institution_ids << inst.id
-        puts "#{inst.id}: #{inst.name}"
+        institution_ids << inst['id']
+        puts "#{inst['id']}: #{inst['name']}"
       end
 
       print 'Enter bank ID (hopefully you have scrollback): '

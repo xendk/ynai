@@ -6,7 +6,6 @@ source "https://rubygems.org"
 
 gem 'nordigen-ruby'
 gem 'sqlite3'
-gem 'warning'
 gem 'ynab'
 
 gem 'solargraph', group: :development

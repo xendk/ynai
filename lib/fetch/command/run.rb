@@ -31,10 +31,10 @@ module Fetch
         account_id, * = row
 
         transactions = client.account(account_id).get_transactions
-        transactions.transactions.booked.each do |transaction|
+        transactions.dig('transactions', 'booked')&.each do |transaction|
           # Skip existing transactions, but process the last day in
           # case more cropped up.
-          next if latest && transaction.bookingDate < latest
+          next if latest && transaction['bookingDate'] < latest
 
           # The transaction IDs are too big for import_id, so we hash
           # it and cut it down to size. We prefix by the date, which
@@ -42,28 +42,28 @@ module Fetch
           # never collide with a past transaction. The risk of
           # collision would probably be lower just using as much hash
           # as possible, but this feels better.
-          import_id = (transaction.bookingDate + Digest::SHA1.hexdigest(transaction.transactionId))[0..35]
+          import_id = (transaction['bookingDate'] + Digest::SHA1.hexdigest(transaction['transactionId']))[0..35]
 
           # Not all banks supply these.
-          balance_amount = transaction.balanceAfterTransaction&.balanceAmount&.amount || 0
-          balance_currency = transaction.balanceAfterTransaction&.balanceAmount&.currency || ''
+          balance_amount = transaction.dig('balanceAfterTransaction', 'balanceAmount', 'amount') || 0
+          balance_currency = transaction.dig('balanceAfterTransaction', 'balanceAmount' 'currency') || ''
 
           # Differences in "description" between banks.
-          description = transaction.remittanceInformationUnstructured&.split(/\n/)&.first ||
-                        transaction.additionalInformation
+          description = transaction.dig('remittanceInformationUnstructured')&.split(/\n/)&.first ||
+                        transaction['additionalInformation']
 
           insert.execute(
-            transaction.transactionId,
+            transaction['transactionId'],
             account_id,
             'pending',
-            transaction.bookingDate,
-            transaction.transactionAmount.amount,
-            transaction.transactionAmount.currency,
+            transaction['bookingDate'],
+            transaction.dig('transactionAmount', 'amount'),
+            transaction.dig('transactionAmount', 'currency'),
             description,
             # Apparently some cleared transactions doesn't have a
             # value date. Seems to occur on transactions between
             # accounts (and perhaps only new ones).
-            transaction.valueDate || transaction.bookingDate,
+            transaction['valueDate'] || transaction['bookingDate'],
             balance_amount,
             balance_currency,
             import_id
