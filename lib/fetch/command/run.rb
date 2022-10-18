@@ -30,7 +30,7 @@ module Fetch
 
           # Not all banks supply these.
           balance_amount = transaction.dig('balanceAfterTransaction', 'balanceAmount', 'amount') || 0
-          balance_currency = transaction.dig('balanceAfterTransaction', 'balanceAmount' 'currency') || ''
+          balance_currency = transaction.dig('balanceAfterTransaction', 'balanceAmount', 'currency') || ''
 
           # Differences in "description" between banks.
           description = transaction.dig('remittanceInformationUnstructured')&.split(/\n/)&.first ||
