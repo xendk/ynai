@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'digest'
+require 'yaml'
 
 module Fetch
   # Run command.
@@ -48,7 +49,8 @@ module Fetch
             value_date: transaction['valueDate'] || transaction['bookingDate'],
             balance: balance_amount,
             balance_currency: balance_currency,
-            import_id: import_id
+            import_id: import_id,
+            original_data: transaction.to_yaml
           )
         end
       end
