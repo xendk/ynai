@@ -33,7 +33,7 @@ module Fetch
           balance_currency = transaction.dig('balanceAfterTransaction', 'balanceAmount', 'currency') || ''
 
           # Differences in "description" between banks.
-          description = transaction.dig('remittanceInformationUnstructured')&.split(/\n/)&.first ||
+          description = transaction['remittanceInformationUnstructured']&.split(/\n/)&.first ||
                         transaction['additionalInformation']
           db[:transactions].insert_ignore.insert(
             id: transaction['transactionId'],
