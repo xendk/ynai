@@ -5,7 +5,7 @@
 require 'bundler/setup'
 
 require 'optparse'
-require 'sqlite3'
+require 'sequel'
 require 'ynab'
 
 require_relative 'lib/config'
@@ -92,27 +92,39 @@ end
 
 prompt += "(Return to not import this account)\n"
 
+db = Sequel.sqlite('ynai.db')
+
+Sequel.extension :migration
+# Start at 1 if we have a legacy database without schema_info.
+if db.table_exists?(:transactions) && !db.table_exists?(:schema_info)
+  Sequel::Migrator.run(db, 'migrations', current: 1)
+  # If there's no migrations past 1, the schema version gets
+  # set to 0, so update it.
+  db[:schema_info].where(version: 0).update(version: 1)
+else
+  Sequel::Migrator.run(db, 'migrations')
+end
+
 if update_mapping || !config.has?(:mapping)
   mapping = {}
   summary = []
-  SQLite3::Database.open File.join(config.path, 'ynai.db') do |db|
-    res = db.execute('SELECT id, name FROM accounts')
-    res.each do |id, name|
-      puts prompt
-      puts "Import \"#{name}\" into: "
 
-      choice = gets.chomp
-      if choice == ''
-        summary << "#{name} => <not imported>"
-        next
-      end
+  res = db.execute('SELECT id, name FROM accounts')
+  db[:accounts].select(:id, :name).all do |id:, name:|
+    puts prompt
+    puts "Import \"#{name}\" into: "
 
-      choice = choice.to_i
-      raise 'Invalid selection' unless accounts.include? choice
-
-      mapping[id] = accounts[choice][0]
-      summary << "#{name} => #{accounts[choice][1]}"
+    choice = gets.chomp
+    if choice == ''
+      summary << "#{name} => <not imported>"
+      next
     end
+
+    choice = choice.to_i
+    raise 'Invalid selection' unless accounts.include? choice
+
+    mapping[id] = accounts[choice][0]
+    summary << "#{name} => #{accounts[choice][1]}"
   end
 
   puts 'Mapping bank account => YNAB account:'
@@ -128,27 +140,24 @@ end
 
 processed_ids = []
 transactions = []
-db = SQLite3::Database.open File.join(config.path, 'ynai.db')
-query = db.prepare <<~SQL
-  SELECT id, booking_date, amount, description, import_id
-  FROM transactions
-  WHERE state = "pending" AND value_date IS NOT NULL AND account_id = ?
-SQL
 
 config[:mapping].each_key do |account|
-  res = query.execute account
-
-  res.each_hash do |row|
+  db[:transactions]
+    .select(:id, :booking_date, :amount, :description, :import_id)
+    .where(state: 'pending')
+    .where(account_id: account)
+    .exclude(value_date: nil)
+    .all do |row|
     transactions << {
       'account_id' => config[:mapping][account],
-      'date' => row['booking_date'],
-      'amount' => (row['amount'] * 1000).to_i,
-      'payee_name' => row['description'],
+      'date' => row[:booking_date],
+      'amount' => (row[:amount] * 1000).to_i,
+      'payee_name' => row[:description],
       'cleared' => 'cleared',
-      'import_id' => row['import_id']
+      'import_id' => row[:import_id]
     }
 
-    processed_ids << row['id']
+    processed_ids << row[:id]
   end
 end
 
@@ -166,9 +175,8 @@ rescue YNAB::ApiError => e
   exit!
 end
 
-query = db.prepare 'UPDATE transactions SET state = "processed" WHERE id = ?'
 processed_ids.each do |id|
-  query.execute id
+  db[:transactions].where(id: id).update(state: 'processed')
 end
 
 if res.data.duplicate_import_ids && !res.data.duplicate_import_ids.empty?

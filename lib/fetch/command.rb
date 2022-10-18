@@ -25,11 +25,11 @@ module Fetch
 
     def db
       if block_given?
-        SQLite3::Database.open File.join(@config.path, 'ynai.db') do |db|
+        Sequel.sqlite(File.join(@config.path, 'ynai.db')) do |db|
           yield db
         end
       else
-        SQLite3::Database.open File.join(@config.path, 'ynai.db')
+        Sequel.sqlite(File.join(@config.path, 'ynai.db'))
       end
     end
 

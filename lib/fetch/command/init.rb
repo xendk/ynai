@@ -1,38 +1,22 @@
 # frozen_string_literal: true
 
-require 'sqlite3'
-
 module Fetch
-
   # Database init command.
   class Command::Init < Command
     def run
+      Sequel.extension :migration
       db do |db|
-        db.execute <<~SQL
-          CREATE TABLE IF NOT EXISTS accounts (
-            id TEXT PRIMARY KEY NOT NULL,
-            name TEXT NOT NULL,
-            product TEXT NOT NULL
-          );
-        SQL
-        db.execute <<~SQL
-          CREATE TABLE IF NOT EXISTS transactions (
-            id TEXT PRIMARY KEY NOT NULL,
-            account_id TEXT NOT NULL,
-            state TEXT CHECK( state IN ('pending', 'processed') ),
-            booking_date TEXT NOT NULL,
-            amount REAL NOT NULL,
-            currency TEXT NOT NULL,
-            description TEXT NOT NULL,
-            value_date TEXT,
-            balance REAL,
-            balance_currency TEXT,
-            import_id TEXT
-          );
-        SQL
-
-        puts 'Database set up. Now run `fetch register`.'
+        # Start at 1 if we have a legacy database without schema_info.
+        if db.table_exists?(:transactions) && !db.table_exists?(:schema_info)
+          Sequel::Migrator.run(db, 'migrations', current: 1)
+          # If there's no migrations past 1, the schema version gets
+          # set to 0, so update it.
+          db[:schema_info].where(version: 0).update(version: 1)
+        else
+          Sequel::Migrator.run(db, 'migrations')
+        end
       end
+      puts 'Database set up. Now run `fetch register`.'
     end
   end
 end

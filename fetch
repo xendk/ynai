@@ -7,6 +7,7 @@ require 'bundler/setup'
 require 'nordigen-ruby'
 require 'optparse'
 require 'securerandom'
+require 'sequel'
 
 require_relative 'lib/config'
 require_relative 'lib/fetch/command'

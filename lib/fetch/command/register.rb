@@ -20,9 +20,12 @@ module Fetch
       req['accounts']&.each do |id|
         details = client.account(id).get_details
         db do |db|
-          sql = 'INSERT OR REPLACE INTO accounts (id, name, product) VALUES (?, ?, ?)'
           # Some banks doesn't give a product.
-          db.execute(sql, [id, details.dig('account', 'name'), details.dig('account', 'product') || ''])
+          db[:accounts].insert(
+            id: id,
+            name: details.dig('account', 'name'),
+            product: details.dig('account', 'product') || ''
+          )
         end
       end
 
