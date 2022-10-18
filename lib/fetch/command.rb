@@ -24,12 +24,12 @@ module Fetch
     end
 
     def db
+      @db ||= Ynai::Database.get
+
       if block_given?
-        Sequel.sqlite(File.join(@config.path, 'ynai.db')) do |db|
-          yield db
-        end
+        yield @db
       else
-        Sequel.sqlite(File.join(@config.path, 'ynai.db'))
+        @db
       end
     end
 
@@ -94,5 +94,4 @@ module Fetch
 end
 
 require_relative 'command/register'
-require_relative 'command/init'
 require_relative 'command/run'

@@ -27,12 +27,6 @@ in an SQLite database.
 
 ### Setup
 
-Create the SQLite database:
-
-``` shell
-$ ./fetch init
-```
-
 Register with Nordigen and create a [user
 secret](https://ob.nordigen.com/user-secrets/). Now run the `register`
 sub-command:

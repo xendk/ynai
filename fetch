@@ -10,10 +10,10 @@ require 'securerandom'
 require 'sequel'
 
 require_relative 'lib/config'
+require_relative 'lib/database'
 require_relative 'lib/fetch/command'
 
 commands = {
-  'init' => 'Create database',
   'register' => 'Register a bank connection',
   'run' => 'Fetch transactions'
 }
