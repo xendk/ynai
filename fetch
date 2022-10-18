@@ -44,16 +44,6 @@ command = ARGV.shift
 
 abort 'Unknown command' unless commands.key? command
 
-def register_command()
-
-  req.accounts.each do |id|
-    p client.account(id).get_details
-    # puts client.account(id).get_transactions.to_yaml
-  end
-
-  # p config
-end
-
 config = Config.new(__dir__, '.fetch.yml')
 
 case command
