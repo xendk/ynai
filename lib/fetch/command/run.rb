@@ -15,7 +15,7 @@ module Fetch
         account_id = row[:id]
 
         transactions = client.account(account_id).get_transactions
-        unless transactions['status_code'] == 200
+        unless transactions['transactions']
           puts 'Error fetching transactions'
           puts transactions['summary'] if transactions['summary']
           puts transactions['detail'] if transactions['detail']
