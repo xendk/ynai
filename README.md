@@ -77,9 +77,9 @@ Simply running the command will configure it on the first run.
 $ ./push
 ```
 
-It'll ask for the personal access token you created, which budget
-you'd like to import to, ask for each bank account which YNAB account
-to import it into, and do the first import.
+It'll ask for the personal access token you created, ask for each bank
+account which YNAB budget and account to import it into, and do the
+first import.
 
 Like `fetch` it will save its configuration into `.push.yml` at each
 step.

@@ -42,40 +42,22 @@ unless config.has?(:token)
   config.save!
 end
 
+if config.has?(:budget_id)
+  config.delete(:budget_id)
+  config.save!
+end
+
 ynab_api = YNAB::API.new(config[:token])
 
-budgets = {}
-budget_accounts = nil
-
-unless config.has?(:budget_id)
+if refresh_accounts || !config.has?(:accounts)
   budget_response = ynab_api.budgets.get_budgets include_accounts: true
   budget_data = budget_response.data.budgets
 
-  budget_data.each do |budget|
-    puts budget.name
-    budgets[budget.name] = budget
-  end
-
-  print 'Select budget: '
-  budget_name = gets.chomp
-
-  raise 'Invalid budget' unless budgets.include? budget_name
-
-  config[:budget_id] = budgets[budget_name].id
-  config.save!
-
-  budget_accounts = budgets[budget_name].accounts
-end
-
-if refresh_accounts || !config.has?(:accounts)
-  unless budget_accounts
-    accounts_response = ynab_api.accounts.get_accounts(config[:budget_id])
-    budget_accounts = accounts_response.data.accounts
-  end
-
   accounts = {}
-  budget_accounts.each do |account|
-    accounts[account.id] = account.name
+  budget_data.each do |budget|
+    budget.accounts.each do |account|
+      accounts[account.id] = "#{budget.name} - #{account.name}"
+    end
   end
 
   config[:accounts] = accounts
