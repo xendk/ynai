@@ -6,10 +6,8 @@ require 'bundler/setup'
 
 require 'optparse'
 require 'sequel'
-require 'ynab'
 
-require_relative 'lib/config'
-require_relative 'lib/database'
+require_relative 'lib/push'
 
 refresh_accounts = false
 update_mapping = false
@@ -36,121 +34,8 @@ end.parse!
 
 config = Config.new(__dir__, '.push.yml')
 
-unless config.has?(:token)
-  print 'Enter personal access token: '
-  config[:token] = gets.chomp
-  config.save!
-end
-
-if config.has?(:budget_id)
-  config.delete(:budget_id)
-  config.save!
-end
-
-ynab_api = YNAB::API.new(config[:token])
-
-if refresh_accounts || !config.has?(:accounts)
-  budget_response = ynab_api.budgets.get_budgets include_accounts: true
-  budget_data = budget_response.data.budgets
-
-  accounts = {}
-  budget_data.each do |budget|
-    budget.accounts.each do |account|
-      accounts[account.id] = "#{budget.name} - #{account.name}"
-    end
-  end
-
-  config[:accounts] = accounts
-  config.save!
-end
-
-number = 1
-accounts = {}
-prompt = ''
-config[:accounts].each do |id, name|
-  accounts[number] = [id, name]
-  prompt += "#{number}: #{name}\n"
-  number += 1
-end
-
-prompt += "(Return to not import this account)\n"
-
 db = Ynai::Database.get
 
-if update_mapping || !config.has?(:mapping)
-  mapping = {}
-  summary = []
+command = Ynai::Push.new(config, db)
 
-  res = db.execute('SELECT id, name FROM accounts')
-  db[:accounts].select(:id, :name).all do |id:, name:|
-    puts prompt
-    puts "Import \"#{name}\" into: "
-
-    choice = gets.chomp
-    if choice == ''
-      summary << "#{name} => <not imported>"
-      next
-    end
-
-    choice = choice.to_i
-    raise 'Invalid selection' unless accounts.include? choice
-
-    mapping[id] = accounts[choice][0]
-    summary << "#{name} => #{accounts[choice][1]}"
-  end
-
-  puts 'Mapping bank account => YNAB account:'
-  summary.each do |line|
-    puts line
-  end
-  print 'Is this OK? (y/n) '
-  raise 'Canceled' unless gets.chomp =~ /y/
-
-  config[:mapping] = mapping
-  config.save!
-end
-
-processed_ids = []
-transactions = []
-
-config[:mapping].each_key do |account|
-  db[:transactions]
-    .select(:id, :booking_date, :amount, :description, :import_id)
-    .where(state: 'pending')
-    .where(account_id: account)
-    .exclude(value_date: nil)
-    .all do |row|
-    transactions << {
-      'account_id' => config[:mapping][account],
-      'date' => row[:booking_date],
-      'amount' => (row[:amount] * 1000).to_i,
-      'payee_name' => row[:description],
-      'cleared' => 'cleared',
-      'import_id' => row[:import_id]
-    }
-
-    processed_ids << row[:id]
-  end
-end
-
-if transactions.empty?
-  puts 'No new transactions'
-  exit
-end
-
-data = { 'transactions' => transactions }
-begin
-  res = ynab_api.transactions.create_transactions(config[:budget_id], data)
-rescue YNAB::ApiError => e
-  puts e.name
-  puts e.detail
-  exit!
-end
-
-processed_ids.each do |id|
-  db[:transactions].where(id: id).update(state: 'processed')
-end
-
-if res.data.duplicate_import_ids && !res.data.duplicate_import_ids.empty?
-  puts "Duplicated IDs: #{res.data.duplicate_import_ids.join(', ')}"
-end
+command.run(refresh_accounts, update_mapping)
