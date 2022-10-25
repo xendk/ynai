@@ -49,8 +49,6 @@ config = Config.new(__dir__, '.fetch.yml')
 case command
 when 'register'
   Fetch::Command::Register.new(config).run
-when 'init'
-  Fetch::Command::Init.new(config).run
 when 'run'
   Fetch::Command::Run.new(config).run
 end
