@@ -94,7 +94,7 @@ module Ynai
       @config[:mapping].each_key do |account|
         ynab_account = @config[:mapping][account]
         budget_id = @config[:budget_mapping][ynab_account]
-        transactions[budget_id] = []
+        transactions[budget_id] = [] unless transactions.has_key? budget_id
         @db[:transactions]
           .select(:id, :booking_date, :amount, :description, :import_id)
           .where(state: 'pending')
