@@ -3,7 +3,7 @@
 require_relative '../lib/push'
 
 describe Ynai::Push do
-  it 'should push transactions when configured' do
+  it 'pushes transactions when configured' do
     # We'll just use a Hash instead of mocking config.
     config = {
       'push.token' => 'ynab-token',
