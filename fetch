@@ -44,7 +44,7 @@ command = ARGV.shift
 
 abort 'Unknown command' unless commands.key? command
 
-config = Config.new(__dir__, '.fetch.yml')
+config = Ynai::Config.new(Ynai::Database.get)
 
 case command
 when 'register'

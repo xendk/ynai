@@ -6,10 +6,10 @@ describe Ynai::Push do
   it 'should push transactions when configured' do
     # We'll just use a Hash instead of mocking config.
     config = {
-      token: 'ynab-token',
-      budget_mapping: { 'a123' => 'b123', 'a321' => 'b321' },
-      accounts: { 'a123' => 'budget1 - first account', 'a321' => 'budget2 - second account' },
-      mapping: { 'ba213' => 'a123', 'ba312' => 'a321' }
+      'push.token' => 'ynab-token',
+      'push.budget_mapping' => { 'a123' => 'b123', 'a321' => 'b321' },
+      'push.accounts' => { 'a123' => 'budget1 - first account', 'a321' => 'budget2 - second account' },
+      'push.mapping' => { 'ba213' => 'a123', 'ba312' => 'a321' }
     }
     # Make Hash look like a Config.
     config.class.send(:alias_method, :has?, :has_key?)

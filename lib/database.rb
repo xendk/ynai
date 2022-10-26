@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
+require 'sequel'
+
 module Ynai
   # Database module.
   module Database
-    def self.get
-      db = Sequel.sqlite('ynai.db')
+    def self.get(file = 'ynai.db')
+      db = Sequel.sqlite(file)
 
       Sequel.extension :migration
       # Start at 1 if we have a legacy database without schema_info.

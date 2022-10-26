@@ -14,20 +14,18 @@ module Ynai
     end
 
     def run(refresh_accounts, update_mapping)
-      unless @config.has?(:token)
+      unless @config.has?('push.token')
         print 'Enter personal access token: '
-        @config[:token] = gets.chomp
-        @config.save!
+        @config['push.token'] = gets.chomp
       end
 
-      ynab_api = YNAB::API.new(@config[:token])
+      ynab_api = YNAB::API.new(@config['push.token'])
 
-      if @config.has?(:budget_id)
-        @config.delete(:budget_id)
-        @config.save!
+      if @config.has?('push.budget_id')
+        @config.delete('push.budget_id')
       end
 
-      if refresh_accounts || !@config.has?(:accounts) || !@config.has?(:budget_mapping)
+      if refresh_accounts || !@config.has?('push.accounts') || !@config.has?('push.budget_mapping')
         budget_response = ynab_api.budgets.get_budgets include_accounts: true
         budget_data = budget_response.data.budgets
 
@@ -40,15 +38,14 @@ module Ynai
           end
         end
 
-        @config[:accounts] = accounts
-        @config[:budget_mapping] = budget_mapping
-        @config.save!
+        @config['push.accounts'] = accounts
+        @config['push.budget_mapping'] = budget_mapping
       end
 
       number = 1
       accounts = {}
       prompt = ''
-      @config[:accounts].each do |id, name|
+      @config['push.accounts'].each do |id, name|
         accounts[number] = [id, name]
         prompt += "#{number}: #{name}\n"
         number += 1
@@ -56,7 +53,7 @@ module Ynai
 
       prompt += "(Return to not import this account)\n"
 
-      if update_mapping || !@config.has?(:mapping)
+      if update_mapping || !@config.has?('push.mapping')
         mapping = {}
         summary = []
 
@@ -84,16 +81,15 @@ module Ynai
         print 'Is this OK? (y/n) '
         raise 'Canceled' unless gets.chomp =~ /y/
 
-        @config[:mapping] = mapping
-        @config.save!
+        @config['push.mapping'] = mapping
       end
 
       processed_ids = []
       transactions = {}
 
-      @config[:mapping].each_key do |account|
-        ynab_account = @config[:mapping][account]
-        budget_id = @config[:budget_mapping][ynab_account]
+      @config['push.mapping'].each_key do |account|
+        ynab_account = @config['push.mapping'][account]
+        budget_id = @config['push.budget_mapping'][ynab_account]
         transactions[budget_id] = [] unless transactions.has_key? budget_id
         @db[:transactions]
           .select(:id, :booking_date, :amount, :description, :import_id)

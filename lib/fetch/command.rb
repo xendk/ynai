@@ -13,12 +13,12 @@ module Fetch
         ensure_secrets
 
         @client = Nordigen::NordigenClient.new(
-          secret_id: @config[:secret_id],
-          secret_key: @config[:secret_key]
+          secret_id: @config['fetch.secret_id'],
+          secret_key: @config['fetch.secret_key']
         )
       end
 
-      @client.set_token @config[:access_token] if @config.has? :access_token
+      @client.set_token @config['fetch.access_token'] if @config.has? 'fetch.access_token'
 
       @client
     end
@@ -34,31 +34,26 @@ module Fetch
     end
 
     def ensure_secrets
-      return if @config.has?(:secret_id) && @config.has?(:secret_key)
+      return if @config.has?('fetch.secret_id') && @config.has?('fetch.secret_key')
 
       print 'Enter secret id: '
-      @config[:secret_id] = gets.chomp
+      @config['fetch.secret_id'] = gets.chomp
 
       print 'Enter secret key: '
-      @config[:secret_key] = gets.chomp
-
-      @config.save!
+      @config['fetch.secret_key'] = gets.chomp
     end
 
     def ensure_tokens
-      return if @config.has?(:access_token) && @config.has?(:refresh_token)
+      return if @config.has?('fetch.access_token') && @config.has?('fetch.refresh_token')
 
       token = client.generate_token
 
-      @config[:access_token] = token['access']
-      @config[:refresh_token] = token['refresh']
-
-      @config.save!
+      @config['fetch.access_token'] = token['access']
+      @config['fetch.refresh_token'] = token['refresh']
     end
 
     def refresh_token
-      @config[:access_token] = client.exchange_token(@config[:refresh_token])['access']
-      @config.save!
+      @config['fetch.access_token'] = client.exchange_token(@config['fetch.refresh_token'])['access']
     end
 
     def ensure_connection
@@ -77,14 +72,13 @@ module Fetch
         elsif attempt == 3
           puts 'Failed'
           puts 'Getting new token'
-          @config.delete :access_token
+          @config.delete 'fetch.access_token'
           ensure_tokens
           retry
         else
           # Remove invalid tokens.
-          @config.delete(:access_token)
-          @config.delete(:refresh_token)
-          @config.save!
+          @config.delete('fetch.access_token')
+          @config.delete('fetch.refresh_token')
 
           raise 'Error getting token'
         end

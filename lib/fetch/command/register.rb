@@ -12,7 +12,7 @@ module Fetch
 
       ensure_requsition
 
-      req = client.requisition.get_requisition_by_id @config[:requsition_id]
+      req = client.requisition.get_requisition_by_id @config['fetch.requsition_id']
 
       raise 'Error fetching requisition' unless req['id']
 
@@ -34,7 +34,7 @@ module Fetch
     end
 
     def ensure_instution
-      return if @config.has?(:institution_id)
+      return if @config.has?('fetch.institution_id')
 
       print 'Enter country code (ISO 3166) or press return for all: '
       country = gets.chomp
@@ -49,21 +49,19 @@ module Fetch
       institution_id = gets.chomp
       raise 'Invalid institution ID' unless institution_ids.include? institution_id
 
-      @config[:institution_id] = institution_id
-      @config.save!
+      @config['fetch.institution_id'] = institution_id
     end
 
     def ensure_requsition
-      return if @config.has?(:requsition_id)
+      return if @config.has?('fetch.requsition_id')
 
-      @config[:reference_id] = SecureRandom.uuid
+      @config['fetch.reference_id'] = SecureRandom.uuid
       requsition = client.init_session(
         redirect_url: 'https://google.com',
-        institution_id: @config[:institution_id],
-        reference_id: @config[:reference_id]
+        institution_id: @config['fetch.institution_id'],
+        reference_id: @config['fetch.reference_id']
       )
-      @config[:requsition_id] = requsition['id']
-      @config.save!
+      @config['fetch.requsition_id'] = requsition['id']
 
       puts "Now visit: #{requsition['link']}"
       puts 'And re-run this command when you hit google.com.'

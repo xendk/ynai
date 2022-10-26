@@ -5,8 +5,9 @@
 require 'bundler/setup'
 
 require 'optparse'
-require 'sequel'
 
+require_relative 'lib/config'
+require_relative 'lib/database'
 require_relative 'lib/push'
 
 refresh_accounts = false
@@ -32,9 +33,9 @@ OptionParser.new do |opts|
   end
 end.parse!
 
-config = Config.new(__dir__, '.push.yml')
-
 db = Ynai::Database.get
+
+config = Ynai::Config.new(db)
 
 command = Ynai::Push.new(config, db)
 

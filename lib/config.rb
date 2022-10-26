@@ -1,55 +1,32 @@
 # frozen_string_literal: true
 
-require 'yaml'
+require 'json'
 
-# Handle the config.
-class Config
-  attr_reader :path
+module Ynai
+  # Handle the config.
+  class Config
+    attr_reader :path
 
-  def initialize(path, filename)
-    @path = path
-    @filename = File.join(path, filename)
-
-    unless File.exist? @filename
-      @config = {}
-      return
+    def initialize(db)
+      @db = db
     end
 
-    begin
-      @config = YAML.safe_load(File.read(@filename), symbolize_names: true)
-
-      # Make sub-hashes be string indexed.
-      @config.transform_values! do |val|
-        val.transform_keys!(&:to_s) if val.is_a? Hash
-        val
-      end
-    rescue StandardError => e
-      abort "Error loading config file: #{e.message}"
-    end
-  end
-
-  def save!
-    data = {}
-    @config.each_pair do |key, val|
-      data[key.to_s] = val
+    def has?(key)
+      !@db[:config][name: key].nil?
     end
 
-    File.write(@filename, data.to_yaml)
-  end
+    def [](key)
+      JSON.parse(@db[:config][name: key][:value])
+    end
 
-  def has?(key)
-    @config.key? key
-  end
+    def []=(key, val)
+      json = val.to_json
+      row = @db[:config].where(name: key)
+      @db[:config].insert(name: key, value: json) unless row.update(value: json) == 1
+    end
 
-  def [](key)
-    @config[key]
-  end
-
-  def []=(key, val)
-    @config[key] = val
-  end
-
-  def delete(key)
-    @config.delete(key)
+    def delete(key)
+      @db[:config].where(name: key).delete
+    end
   end
 end
