@@ -44,7 +44,7 @@ describe Ynai::Configurator do
     it 'can configure fetch.secret_id' do
       configurator = Ynai::Configurator.new
 
-      expect(configurator).to receive(:print).with('Enter secret id: ')
+      expect(configurator).to receive(:print).with("\nEnter secret id: ")
       expect(configurator).to receive(:gets) { "secret\n" }
 
       expect(configurator.get('fetch.secret_id')).to eq('secret')
@@ -53,7 +53,7 @@ describe Ynai::Configurator do
     it 'can configure fetch.secret_key' do
       configurator = Ynai::Configurator.new
 
-      expect(configurator).to receive(:print).with('Enter secret key: ')
+      expect(configurator).to receive(:print).with("\nEnter secret key: ")
       expect(configurator).to receive(:gets) { "secret key\n" }
 
       expect(configurator.get('fetch.secret_key')).to eq('secret key')
@@ -127,8 +127,9 @@ describe Ynai::Configurator do
 
       configurator.nordigen = nordigen
 
-      expect(configurator).to receive(:print).with('Enter country code (ISO 3166) or press return for all: ')
-      expect(configurator).to receive(:print).with('Enter bank ID (hopefully you have scrollback): ')
+      expect(configurator).to receive(:print).with("\nEnter country code (ISO 3166) or press return for all: ")
+      expect(configurator).to receive(:print).with("\nEnter bank ID (hopefully you have scrollback): ")
+      expect(configurator).to receive(:puts)
       expect(configurator).to receive(:puts).with('BANKID1: Bank 1')
       expect(configurator).to receive(:puts).with('BANKID2: Bank 2')
       expect(configurator).to receive(:gets).and_return("dk\n", "BANKID2\n")
@@ -155,8 +156,9 @@ describe Ynai::Configurator do
 
       configurator.nordigen = nordigen
 
-      expect(configurator).to receive(:print).with('Enter country code (ISO 3166) or press return for all: ')
-      expect(configurator).to receive(:print).with('Enter bank ID (hopefully you have scrollback): ')
+      expect(configurator).to receive(:print).with("\nEnter country code (ISO 3166) or press return for all: ")
+      expect(configurator).to receive(:print).with("\nEnter bank ID (hopefully you have scrollback): ")
+      expect(configurator).to receive(:puts)
       expect(configurator).to receive(:puts).with('BANKID1: Bank 1')
       expect(configurator).to receive(:puts).with('BANKID2: Bank 2')
       expect(configurator).to receive(:gets).and_return("dk\n", "BANKID3\n")
@@ -167,15 +169,16 @@ describe Ynai::Configurator do
     it 'can configure fetch.requisition_id' do
       nordigen = double('nordigen')
       expect(nordigen).to receive(:init_session).and_return({
-                                                              'id' => 'req_id',
-                                                              'link' => 'https://the.link'
-                                                            })
+        'id' => 'req_id',
+        'link' => 'https://the.link'
+      })
 
       config = double('config')
       expect(config).to receive(:[]).with('fetch.institution_id') { 'the institution' }
       expect(config).to receive(:[]=).with('fetch.requisition_id', 'req_id')
 
       configurator = Ynai::Configurator.new
+      expect(configurator).to receive(:puts)
       expect(configurator).to receive(:puts).with('Now visit: https://the.link')
       expect(configurator).to receive(:puts).with('And re-run this command when you hit google.com.')
 
@@ -189,21 +192,21 @@ describe Ynai::Configurator do
       nordigen = double('nordigen')
       expect(nordigen)
         .to receive_message_chain(:requisition, :get_requisition_by_id)
-              .with('req_id')
-              .and_return({
-                            'id' => 'req_id',
-                            'accounts' => %w[id1 id2]
-                          })
+        .with('req_id')
+        .and_return({
+          'id' => 'req_id',
+          'accounts' => %w[id1 id2]
+        })
 
       res1 = double
       res2 = double
       expect(res1).to receive(:get_details).and_return({ 'account' => {
-                                                           'name' => 'name 1',
-                                                           'product' => 'product 1'
-                                                         }})
+        'name' => 'name 1',
+        'product' => 'product 1'
+      }})
       expect(res2).to receive(:get_details).and_return({ 'account' => {
-                                                           'name' => 'name 2'
-                                                         }})
+        'name' => 'name 2'
+      }})
       expect(nordigen).to receive(:account).with('id1') { res1 }
       expect(nordigen).to receive(:account).with('id2') { res2 }
 
@@ -215,22 +218,23 @@ describe Ynai::Configurator do
       configurator.config = config
 
       expect(configurator).to receive(:puts).with('Fetching accounts')
+      expect(configurator).to receive(:puts)
       expect(configurator).to receive(:puts).with('2 accounts set up.')
       expect(configurator).to receive(:puts).with('All set up. Now run `fetch run`.')
 
       expect(configurator.get('fetch.accounts'))
         .to eq([
-                 {
-                   id: 'id1',
-                   name: 'name 1',
-                   product: 'product 1'
-                 },
-                 {
-                   id: 'id2',
-                   name: 'name 2',
-                   product: ''
-                 }
-               ])
+          {
+            id: 'id1',
+            name: 'name 1',
+            product: 'product 1'
+          },
+          {
+            id: 'id2',
+            name: 'name 2',
+            product: ''
+          }
+        ])
     end
   end
 
@@ -238,7 +242,7 @@ describe Ynai::Configurator do
     it 'can configure push.token' do
       configurator = Ynai::Configurator.new
 
-      expect(configurator).to receive(:print).with('Enter personal access token: ')
+      expect(configurator).to receive(:print).with("\nEnter personal access token: ")
       expect(configurator).to receive(:gets) { "token\n" }
 
       expect(configurator.get('push.token')).to eq('token')
@@ -292,12 +296,13 @@ describe Ynai::Configurator do
       configurator.config = config
       configurator.db = db
 
-      expect(configurator).to receive(:puts).with("1: first\n2: second\n3: third\n(Return to not import this account)\n").exactly(3).times
+      expect(configurator).to receive(:puts).with("\n1: first\n2: second\n3: third\n(Return to not import this account)\n").exactly(3).times
       expect(configurator).to receive(:print).with('Import "le first" into: ')
       expect(configurator).to receive(:print).with('Import "le second" into: ')
       expect(configurator).to receive(:print).with('Import "le third" into: ')
       expect(configurator).to receive(:print).with('Is this OK? (y/n) ')
       expect(configurator).to receive(:gets).and_return("1\n", "2\n", "\n",  "y\n")
+      expect(configurator).to receive(:puts)
       expect(configurator).to receive(:puts).with('Mapping bank account => YNAB account:')
       expect(configurator).to receive(:puts).with('le first => first')
       expect(configurator).to receive(:puts).with('le second => second')

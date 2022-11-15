@@ -51,7 +51,7 @@ module Ynai
 
     # Helper for just asking the user.
     def ask(prompt)
-      print "#{prompt}: "
+      print "\n#{prompt}: "
       gets.chomp
     end
 
@@ -88,13 +88,13 @@ module Ynai
 
       institutions = nordigen.institution.get_institutions(country)
       institution_ids = []
+      puts
       institutions.each do |inst|
         institution_ids << inst['id']
         puts "#{inst['id']}: #{inst['name']}"
       end
 
-      print 'Enter bank ID (hopefully you have scrollback): '
-      institution_id = gets.chomp
+      institution_id = ask 'Enter bank ID (hopefully you have scrollback)'
       raise 'Invalid institution ID' unless institution_ids.include? institution_id
 
       institution_id
@@ -108,6 +108,7 @@ module Ynai
       )
       @config['fetch.requisition_id'] = requisition['id']
 
+      puts
       puts "Now visit: #{requisition['link']}"
       puts 'And re-run this command when you hit google.com.'
 
@@ -131,6 +132,7 @@ module Ynai
         }
       end
 
+      puts
       puts "#{req['accounts'].size} accounts set up."
       puts 'All set up. Now run `fetch run`.'
 
@@ -156,7 +158,7 @@ module Ynai
     def configure_push__mapping
       number = 1
       accounts = {}
-      prompt = ''
+      prompt = "\n"
       config['push.accounts'].each do |account|
         accounts[number] = account
         prompt += "#{number}: #{account['name']}\n"
@@ -190,6 +192,7 @@ module Ynai
         summary << "#{name} => #{accounts[choice]['name']}"
       end
 
+      puts
       puts 'Mapping bank account => YNAB account:'
       summary.each do |line|
         puts line
