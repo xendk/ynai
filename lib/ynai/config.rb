@@ -5,10 +5,11 @@ require 'json'
 module Ynai
   # Handle the config.
   class Config
-    attr_reader :path
+    attr_reader :configurator
 
-    def initialize(db)
+    def initialize(db, configuarator)
       @db = db
+      @configurator = configuarator
     end
 
     def has?(key)
@@ -16,7 +17,12 @@ module Ynai
     end
 
     def [](key)
-      JSON.parse(@db[:config][name: key][:value])
+      row = @db[:config][name: key]
+      if row
+        JSON.parse(row[:value])
+      else
+        self[key] = @configurator.get(key)
+      end
     end
 
     def []=(key, val)

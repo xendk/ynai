@@ -6,9 +6,11 @@ require 'bundler/setup'
 
 require 'optparse'
 
-require_relative 'lib/config'
-require_relative 'lib/database'
-require_relative 'lib/push'
+require_relative 'lib/ynai/config'
+require_relative 'lib/ynai/configurator'
+require_relative 'lib/ynai/database'
+require_relative 'lib/ynai/push'
+require_relative 'lib/ynai/ynab'
 
 refresh_accounts = false
 update_mapping = false
@@ -35,8 +37,18 @@ end.parse!
 
 db = Ynai::Database.get
 
-config = Ynai::Config.new(db)
+configurator = Ynai::Configurator.new()
+configurator.db = db
 
-command = Ynai::Push.new(config, db)
+config = Ynai::Config.new(db, configurator)
+configurator.config = config
 
-command.run(refresh_accounts, update_mapping)
+ynab = Ynai::YNAB.new(config)
+configurator.ynab = ynab
+
+command = Ynai::Push.new(config, db, ynab)
+
+config.delete 'push.accounts' if refresh_accounts
+config.delete 'push.mapping' if update_mapping
+
+command.run()

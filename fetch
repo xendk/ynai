@@ -9,8 +9,9 @@ require 'optparse'
 require 'securerandom'
 require 'sequel'
 
-require_relative 'lib/config'
-require_relative 'lib/database'
+require_relative 'lib/ynai/config'
+require_relative 'lib/ynai/configurator'
+require_relative 'lib/ynai/database'
 require_relative 'lib/fetch/command'
 
 commands = {
@@ -44,7 +45,7 @@ command = ARGV.shift
 
 abort 'Unknown command' unless commands.key? command
 
-config = Ynai::Config.new(Ynai::Database.get)
+config = Ynai::Config.new(Ynai::Database.get, Ynai::Configurator.new())
 
 case command
 when 'register'

@@ -1,15 +1,17 @@
 # frozen_string_literal: true
 
-require_relative '../lib/push'
+require_relative '../lib/ynai/push'
 
 describe Ynai::Push do
   it 'pushes transactions when configured' do
     # We'll just use a Hash instead of mocking config.
     config = {
       'push.token' => 'ynab-token',
-      'push.budget_mapping' => { 'a123' => 'b123', 'a321' => 'b321' },
-      'push.accounts' => { 'a123' => 'budget1 - first account', 'a321' => 'budget2 - second account' },
-      'push.mapping' => { 'ba213' => 'a123', 'ba312' => 'a321' }
+      'push.mapping' => [
+        { 'nordigen_account_id' => 'ba213', 'ynab_account_id' => 'a123', 'budget_id' => 'b123' },
+        { 'nordigen_account_id' => 'ba312', 'ynab_account_id' => 'a321', 'budget_id' => 'b321' }
+      ]
+
     }
     # Make Hash look like a Config.
     config.class.send(:alias_method, :has?, :has_key?)
@@ -57,56 +59,47 @@ describe Ynai::Push do
     allow(db).to receive_message_chain(:[], :select, :where, :where).with({ account_id: 'ba213' }) { res1 }
     allow(db).to receive_message_chain(:[], :select, :where, :where).with({ account_id: 'ba312' }) { res2 }
 
-    client = double('client')
-    res = double('res')
-    expect(YNAB::API).to receive(:new).with('ynab-token') { client }
+    ynab = double('ynab')
 
-    allow(res).to receive_message_chain('data.duplicate_import_ids.empty?') { true }
-    trans1 = double
-    trans2 = double
-
-    expect(trans1).to receive('create_transactions')
+    expect(ynab).to receive(:create_transactions)
       .with('b123',
-            {
-              'transactions' => [
-                {
-                  'account_id' => 'a123',
-                  'date' => '2022-10-24',
-                  'amount' => 5000,
-                  'payee_name' => 'first transaction',
-                  'cleared' => 'cleared',
-                  'import_id' => 'i1'
-                },
-                {
-                  'account_id' => 'a123',
-                  'date' => '2022-10-24',
-                  'amount' => 1990,
-                  'payee_name' => 'second transaction',
-                  'cleared' => 'cleared',
-                  'import_id' => 'i2'
-                }
-              ]
-            }) { res }
+            [
+              {
+                'account_id' => 'a123',
+                'date' => '2022-10-24',
+                'amount' => 5000,
+                'payee_name' => 'first transaction',
+                'cleared' => 'cleared',
+                'import_id' => 'i1'
+              },
+              {
+                'account_id' => 'a123',
+                'date' => '2022-10-24',
+                'amount' => 1990,
+                'payee_name' => 'second transaction',
+                'cleared' => 'cleared',
+                'import_id' => 'i2'
+              }
+            ]
+           ).and_return([])
 
-    expect(trans2).to receive('create_transactions')
+    expect(ynab).to receive(:create_transactions)
       .with('b321',
-            {
-              'transactions' => [
-                {
-                  'account_id' => 'a321',
-                  'date' => '2022-10-23',
-                  'amount' => 11_000,
-                  'payee_name' => 'second account transaction',
-                  'cleared' => 'cleared',
-                  'import_id' => 'i3'
-                }
-              ]
-            }) { res }
+            [
+              {
+                'account_id' => 'a321',
+                'date' => '2022-10-23',
+                'amount' => 11_000,
+                'payee_name' => 'second account transaction',
+                'cleared' => 'cleared',
+                'import_id' => 'i3'
+              }
+            ]
+           ).and_return([])
 
-    expect(client).to receive(:transactions).and_return(trans1, trans2)
     allow(db).to receive_message_chain(:[], :where, :update).with(state: 'processed')
 
-    push = Ynai::Push.new(config, db)
-    push.run(false, false)
-    end
+    push = Ynai::Push.new(config, db, ynab)
+    push.run()
+  end
 end

@@ -10,12 +10,11 @@ module Fetch
 
     def client
       unless @client
-        ensure_secrets
-
         @client = Nordigen::NordigenClient.new(
           secret_id: @config['fetch.secret_id'],
           secret_key: @config['fetch.secret_key']
         )
+        @config.configurator.nordigen = @client
       end
 
       @client.set_token @config['fetch.access_token'] if @config.has? 'fetch.access_token'
@@ -33,29 +32,6 @@ module Fetch
       end
     end
 
-    def ensure_secrets
-      return if @config.has?('fetch.secret_id') && @config.has?('fetch.secret_key')
-
-      print 'Enter secret id: '
-      @config['fetch.secret_id'] = gets.chomp
-
-      print 'Enter secret key: '
-      @config['fetch.secret_key'] = gets.chomp
-    end
-
-    def ensure_tokens
-      return if @config.has?('fetch.access_token') && @config.has?('fetch.refresh_token')
-
-      token = client.generate_token
-
-      @config['fetch.access_token'] = token['access']
-      @config['fetch.refresh_token'] = token['refresh']
-    end
-
-    def refresh_token
-      @config['fetch.access_token'] = client.exchange_token(@config['fetch.refresh_token'])['access']
-    end
-
     def ensure_connection
       attempt = 1
       begin
@@ -67,13 +43,15 @@ module Fetch
         attempt += 1
         if attempt == 2
           puts 'Refreshing token'
-          refresh_token
+          @config.delete 'fetch.access_token'
+          @client.set_token @config['fetch.access_token']
           retry
         elsif attempt == 3
           puts 'Failed'
           puts 'Getting new token'
           @config.delete 'fetch.access_token'
-          ensure_tokens
+          @config.delete 'fetch.refresh_token'
+          @client.set_token @config['fetch.access_token']
           retry
         else
           # Remove invalid tokens.
