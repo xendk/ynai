@@ -101,9 +101,9 @@ describe Ynai::YNAB do
     ]
     expect(@client).to receive_message_chain(:transactions, :create_transactions)
       .with(budget_id, { 'transactions' => transactions}) {
-        double('res', data: double(duplicate_import_ids: ['123']))
+        double('res', data: double(duplicate_import_ids: ['import_id1']))
       }
 
-    expect(@ynab.create_transactions(budget_id, transactions)).to eq(['123'])
+    expect(@ynab.create_transactions(budget_id, transactions)).to eq(['import_id1'])
   end
 end
