@@ -9,6 +9,7 @@ module Fetch
     def run
       ensure_connection
 
+      today = Time.new().strftime('%Y-%m-%d')
       latest = db[:transactions].max(:booking_date)
 
       db[:accounts].select(:id).all do |row|
@@ -41,12 +42,18 @@ module Fetch
 
           # Differences in "description" between banks.
           description = transaction['remittanceInformationUnstructured']&.split(/\n/)&.first ||
-                        transaction['additionalInformation']
+            transaction['additionalInformation']
+
+          # Wouldn't expect booking dates in the future, but it's been
+          # seen. YNAB doesn't like them, so clamp them down to today.
+          booking_date = transaction['bookingDate']
+          booking_date = today if booking_date > today
+
           db[:transactions].insert_ignore.insert(
             id: transaction['transactionId'],
             account_id: account_id,
             state: 'pending',
-            booking_date: transaction['bookingDate'],
+            booking_date: booking_date,
             amount: transaction.dig('transactionAmount', 'amount'),
             currency: transaction.dig('transactionAmount', 'currency'),
             description: description,
